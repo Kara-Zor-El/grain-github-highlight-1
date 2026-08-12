@@ -1,11 +1,14 @@
 # Build
 dist
-extension.zip
+.wxt
+extension-*.zip
+
+# Copied from web-tree-sitter on postinstall
+public/web-tree-sitter.wasm
 
 # Node
 node_modules
 tsconfig.tsbuildinfo
-.rollup.cache
 
 # General
 .DS_Store

@@ -1,28 +1,31 @@
 {
   "name": "github-grain-highlight",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Grain syntax highlighter for github",
+  "type": "module",
   "scripts": {
-    "clean": "rm -rf dist && rm -f extension.zip && rm -rf .rollup.cache && rm -rf tsconfig.tsbuildinfo",
-    "build": "rollup -c",
-    "format": "prettier --write src/**/*.ts",
-    "pack": "zip -r extension.zip manifest.json icon.png dist",
-    "lint": "prettier --check src/**/*.ts"
+    "clean": "rm -rf dist .wxt",
+    "postinstall": "wxt prepare && cp node_modules/web-tree-sitter/web-tree-sitter.wasm public/web-tree-sitter.wasm",
+    "dev": "wxt",
+    "dev:firefox": "wxt -b firefox",
+    "build": "wxt build && wxt build -b firefox",
+    "build:chrome": "wxt build",
+    "build:firefox": "wxt build -b firefox",
+    "pack": "npm run pack:chrome && npm run pack:firefox",
+    "pack:chrome": "wxt zip",
+    "pack:firefox": "wxt zip -b firefox"
   },
   "author": "spotandjake",
+  "contributors": [
+    "Kara-Zor-El <kara.wilson.2005.08@gmail.com>"
+  ],
   "license": "MIT",
   "devDependencies": {
-    "@rollup/plugin-json": "^6.1.0",
-    "@rollup/plugin-node-resolve": "^16.0.0",
-    "@rollup/plugin-typescript": "^12.1.2",
-    "@shikijs/themes": "^2.3.2",
-    "@shikijs/types": "^2.3.2",
+    "@treelight/browser": "^0.5.0",
+    "@treelight/theme-github-dark": "^0.5.0",
+    "@types/chrome": "^0.2.5",
     "prettier": "3.5.0",
-    "rollup": "^4.34.6",
-    "shiki": "^2.3.2",
-    "tslib": "^2.8.1"
-  },
-  "optionalDependencies": {
-    "@rollup/rollup-linux-x64-gnu": "*"
+    "typescript": "^5.9.2",
+    "wxt": "^0.21.3"
   }
 }

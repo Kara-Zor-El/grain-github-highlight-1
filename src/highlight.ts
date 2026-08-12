@@ -1,59 +1,38 @@
-import {
-  createHighlighterCore,
-  type HighlighterCore,
-  type ShikiTransformer,
-} from "shiki/core";
-import { createJavaScriptRegexEngine } from "shiki/engine/javascript";
-import githubDark from "@shikijs/themes/github-dark-default";
-import grainSyntax from "./grain.json" assert { type: "json" };
+import { createBrowserHighlighter, type Highlighter } from "@treelight/browser";
+import githubDark from "@treelight/theme-github-dark";
+import { grainLanguage } from "./grain-language";
+import type { HighlightView } from "./messaging";
 
-let highlighter: undefined | HighlighterCore;
+let highlighter: Highlighter | undefined;
 
-export enum HighlightView {
-  General,
-  File,
-}
-export default async (code: string, view = HighlightView.General) => {
-  if (highlighter == undefined) {
-    highlighter = await createHighlighterCore({
-      // TODO: Allow customization
-      langs: [grainSyntax as any],
-      themes: [githubDark],
-      engine: createJavaScriptRegexEngine(),
-    });
-  }
-  const transformers: ShikiTransformer[] = [];
-  switch (view) {
-    case HighlightView.File:
-      transformers.push({
-        line(hastNode, line) {
-          hastNode.tagName = "div";
-          hastNode.properties["id"] = `LC${line}`;
-          this.addClassToHast(hastNode, "react-code-text");
-          this.addClassToHast(
-            hastNode,
-            "react-code-line-contents-no-virtualization",
-          );
-          this.addClassToHast(hastNode, "react-file-line");
-          this.addClassToHast(hastNode, "html-div");
-          return hastNode;
-        },
-      });
-      break;
-    case HighlightView.General:
-      transformers.push({
-        pre(hastNode) {
-          hastNode.properties["style"] = "";
-          return hastNode;
-        },
-      });
-      break;
-  }
-  return highlighter.codeToHtml(code, {
-    // TODO: Allow customization
-    lang: "Grain",
-    // TODO: Decide on a theme
-    theme: "github-dark-default",
-    transformers: transformers,
+const getHighlighter = async (): Promise<Highlighter> => {
+  if (highlighter) return highlighter;
+
+  highlighter = await createBrowserHighlighter({
+    parserWasmUrl: browser.runtime.getURL("/web-tree-sitter.wasm"),
+    languages: [grainLanguage()],
+    themes: [githubDark],
   });
+  return highlighter;
+};
+
+const wrapLines = (lines: string[], view: HighlightView) => {
+  if (view === "file") {
+    const rendered = lines.map(
+      (content, index) =>
+        `<div id="LC${index + 1}" class="react-code-text react-code-line-contents-no-virtualization react-file-line html-div">${content}</div>`,
+    );
+    return `<pre><code>${rendered.join("")}</code></pre>`;
+  }
+
+  const rendered = lines.map(
+    (content) => `<span class="line">${content}</span>`,
+  );
+  return `<pre style=""><code>${rendered.join("\n")}</code></pre>`;
+};
+
+export default async (code: string, view: HighlightView = "general") => {
+  const hl = await getHighlighter();
+  const lines = hl.highlightLines(code, "grain");
+  return wrapLines(lines, view);
 };

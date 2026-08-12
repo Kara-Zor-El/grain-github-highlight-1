@@ -1,33 +1,74 @@
 import { GRAIN_EXTENSION } from "./constants";
-import { log } from "./helpers";
-import { resolveFileViewRoute, highlightMarkdownView } from "./github";
-// Inject extension
-let firstTime = true;
-const main = async () => {
-  const isFile = window.location.pathname.includes("/blob/");
-  const isGrainFile =
-    isFile && window.location.pathname.endsWith(`.${GRAIN_EXTENSION}`);
-  const isMarkdownFile = isFile && window.location.pathname.endsWith(".md");
+// import { log } from "./helpers";
+import {
+  resolveFileViewRoute,
+  highlightMarkdownView,
+  highlightDiffView,
+  resetViewState,
+} from "./github";
+
+let lastPath = "";
+let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+let running = false;
+let rerun = false;
+
+const runPass = async () => {
+  const path = window.location.pathname;
+  const isFile = path.includes("/blob/") || path.includes("/blame/");
+  const isGrainFile = isFile && path.endsWith(`.${GRAIN_EXTENSION}`);
+  const isMarkdownFile = path.includes("/blob/") && path.endsWith(".md");
   if (isGrainFile) {
-    resolveFileViewRoute();
+    await resolveFileViewRoute();
   } else if (
-    window.location.pathname.includes("/tree/") ||
-    window.location.pathname.includes("/issues/") ||
+    path.includes("/pull/") ||
+    path.includes("/compare/") ||
+    path.includes("/commit")
+  ) {
+    await highlightDiffView();
+    await highlightMarkdownView();
+  } else if (
+    path.includes("/tree/") ||
+    path.includes("/issues/") ||
     isMarkdownFile
   ) {
-    await highlightMarkdownView();
-  } else if (window.location.pathname.includes("/pull/")) {
     await highlightMarkdownView();
   } else {
     // Handles Main Page
     await highlightMarkdownView();
-    // TODO: Handle commit view
-    // TODO: Handle Blame view
-    // TODO: Handle PR Review view
-    log("Unknown page detected");
+    // log("Unknown page detected");
   }
-  // We need to poll because of react routing
-  firstTime = false;
-  setTimeout(main, firstTime ? 300 : 2250);
 };
-main();
+
+const schedule = () => {
+  if (debounceTimer !== undefined) clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(async () => {
+    debounceTimer = undefined;
+    if (running) {
+      rerun = true;
+      return;
+    }
+    running = true;
+    try {
+      do {
+        rerun = false;
+        if (window.location.pathname !== lastPath) {
+          resetViewState();
+        }
+        lastPath = window.location.pathname;
+        await runPass();
+      } while (rerun || window.location.pathname !== lastPath);
+    } finally {
+      running = false;
+    }
+  }, 200);
+};
+
+export const start = () => {
+  const observer = new MutationObserver(schedule);
+  observer.observe(document.documentElement, {
+    childList: true,
+    subtree: true,
+  });
+
+  schedule();
+};
