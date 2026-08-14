@@ -39,10 +39,19 @@ const runPass = async () => {
   }
 };
 
+const syncPath = (): void => {
+  const path = window.location.pathname;
+  if (path !== lastPath) {
+    resetViewState();
+    lastPath = path;
+  }
+};
+
 const schedule = () => {
   if (debounceTimer !== undefined) clearTimeout(debounceTimer);
   debounceTimer = setTimeout(async () => {
     debounceTimer = undefined;
+    syncPath();
     if (running) {
       rerun = true;
       return;
@@ -51,10 +60,7 @@ const schedule = () => {
     try {
       do {
         rerun = false;
-        if (window.location.pathname !== lastPath) {
-          resetViewState();
-        }
-        lastPath = window.location.pathname;
+        syncPath();
         await runPass();
       } while (rerun || window.location.pathname !== lastPath);
     } finally {

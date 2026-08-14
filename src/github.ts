@@ -79,6 +79,7 @@ const attachFileLineHighlight = async (
   const views = fileViews;
   if (views.has(container)) return;
 
+  const path = window.location.pathname;
   views.set(container, { status: "pending" });
   // log(label);
 
@@ -90,7 +91,10 @@ const attachFileLineHighlight = async (
     throw error;
   }
 
-  const paint = () => paintLines(lineContainer, linesById);
+  const paint = () => {
+    if (window.location.pathname !== path) return;
+    paintLines(lineContainer, linesById);
+  };
   paint();
   // log(`Cached ${linesById.size} highlighted lines`);
 
@@ -130,12 +134,14 @@ const getBlameSource = async (): Promise<string | undefined> => {
 
 const highlightBlameView = async (container: Element): Promise<void> => {
   if (fileViews.has(container)) return;
+  const path = window.location.pathname;
 
   const code = await getBlameSource();
   if (!code) {
     // log("Blame view: could not load file source");
     return;
   }
+  if (window.location.pathname !== path) return;
 
   const lineContainer =
     container.querySelector<HTMLElement>('[class*="virtualBlameWrapper"]') ??
